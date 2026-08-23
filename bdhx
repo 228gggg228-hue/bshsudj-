@@ -1,0 +1,178 @@
+local FanGroup = Tabs.Misc:CreateBlock({
+    Name = "Troll",
+    Side = "Left"
+})
+
+-- =========================================
+-- Jerk Off Animation
+-- =========================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local playJerkOffActive = false
+local jerkOffAnimTrack = nil
+
+local jerkOffAnimId = "rbxassetid://168268306"
+local selectedKey = Enum.KeyCode.Q
+
+
+-- =========================================
+-- Stop animation
+-- =========================================
+
+local function stopJerkOff()
+    if jerkOffAnimTrack then
+        pcall(function()
+            jerkOffAnimTrack:Stop(0.15)
+            jerkOffAnimTrack:Destroy()
+        end)
+
+        jerkOffAnimTrack = nil
+    end
+end
+
+
+-- =========================================
+-- Start animation
+-- =========================================
+
+local function startJerkOff()
+    -- Останавливаем предыдущую анимацию
+    stopJerkOff()
+
+    local Character = LocalPlayer.Character
+        or LocalPlayer.CharacterAdded:Wait()
+
+    if not Character then
+        return
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+
+    if not Humanoid then
+        return
+    end
+
+    local Animator = Humanoid:FindFirstChildOfClass("Animator")
+
+    if not Animator then
+        Animator = Instance.new("Animator")
+        Animator.Parent = Humanoid
+    end
+
+    local Animation = Instance.new("Animation")
+    Animation.AnimationId = jerkOffAnimId
+
+    local success, Track = pcall(function()
+        return Animator:LoadAnimation(Animation)
+    end)
+
+    Animation:Destroy()
+
+    if not success or not Track then
+        return
+    end
+
+    jerkOffAnimTrack = Track
+    jerkOffAnimTrack.Priority = Enum.AnimationPriority.Action
+    jerkOffAnimTrack.Looped = true
+
+    pcall(function()
+        jerkOffAnimTrack:Play(0.15)
+    end)
+end
+
+
+-- =========================================
+-- Toggle
+-- =========================================
+
+FanGroup:CreateToggle({
+    Name = "Jerk Off",
+    Flag = "JerkOff",
+    Default = false,
+
+    Callback = function(Value)
+        playJerkOffActive = Value
+
+        if Value then
+            startJerkOff()
+        else
+            stopJerkOff()
+        end
+    end
+})
+
+
+-- =========================================
+-- Toggle Key
+-- =========================================
+
+FanGroup:CreateDropdown({
+    Name = "Toggle Key",
+    Flag = "ToggleKey",
+
+    Items = {
+        "Q",
+        "E",
+        "R",
+        "T"
+    },
+
+    Default = "Q",
+
+    Callback = function(Value)
+        local KeyCode = Enum.KeyCode[Value]
+
+        if KeyCode then
+            selectedKey = KeyCode
+        end
+    end
+})
+
+
+-- =========================================
+-- Keyboard Bind
+-- =========================================
+
+UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+    if GameProcessed then
+        return
+    end
+
+    if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+        return
+    end
+
+    if Input.KeyCode ~= selectedKey then
+        return
+    end
+
+    playJerkOffActive = not playJerkOffActive
+
+    if playJerkOffActive then
+        startJerkOff()
+    else
+        stopJerkOff()
+    end
+end)
+
+
+-- =========================================
+-- Character Respawn
+-- =========================================
+
+LocalPlayer.CharacterAdded:Connect(function()
+    stopJerkOff()
+
+    if playJerkOffActive then
+        task.wait(0.5)
+
+        if playJerkOffActive then
+            startJerkOff()
+        end
+    end
+end)
