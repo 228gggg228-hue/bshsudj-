@@ -1,12 +1,23 @@
+-- ==========================================
+-- ЗАГРУЗКА БИБЛИОТЕКИ
+-- ==========================================
 local aa = loadstring(game:HttpGet("https://raw.githubusercontent.com/jadpy/suki/refs/heads/main/orion"))()
+
+-- ==========================================
+-- ОСНОВНЫЕ СЕРВИСЫ
+-- ==========================================
 local aa1 = game:GetService("Players")
 local aa2 = game:GetService("ReplicatedStorage")
 local aa3 = game:GetService("RunService")
 local aa82 = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local aa4 = aa1.LocalPlayer
 local aa5 = aa2:WaitForChild("GrabEvents")
 
+-- ==========================================
+-- ПЕРЕМЕННЫЕ ДЛЯ GRABKICK
+-- ==========================================
 local aa6 = false
 local aa7 = ""
 local aa8 = 15
@@ -15,24 +26,33 @@ local aa9 = 25
 local aa10 = aa2:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
 local aa11 = aa5:WaitForChild("SetNetworkOwner")
 
-local aa12 = {
-    aa13 = false
-}
-local aa14 = {
-    aa15 = nil,
-}
+local aa12 = { aa13 = false }
+local aa14 = { aa15 = nil }
 local aa16 = {}
 local aa17 = false
 
--- ===== ラグ方式（秒間65回） ===== 変更点: 65Hz
+-- ==========================================
+-- ПЕРЕМЕННЫЕ ДЛЯ JERK OFF / COCONUT
+-- ==========================================
+local playJerkOffActive = false
+local jerkOffAnimTrack = nil
+local jerkOffAnimId = "rbxassetid://168268306"
+local selectedKey = Enum.KeyCode.Q
+
+-- ==========================================
+-- ЛАГ-СПАМ (65 Гц)
+-- ==========================================
 local running = false
 local ragServer = false
 local targetLag = false
 local selectedPlayerName = nil
-
 local createLineRemote = aa5:FindFirstChild("CreateGrabLine")
--- ================================================
 
+-- ==========================================
+-- ФУНКЦИИ GRABKICK
+-- ==========================================
+
+-- Получить список игроков
 local function aa18()
     local aa19 = {}
     for _, aa20 in ipairs(aa1:GetPlayers()) do
@@ -43,6 +63,7 @@ local function aa18()
     return aa19
 end
 
+-- Найти игрока по имени
 local function aa21(aa22)
     for _, aa23 in ipairs(aa1:GetPlayers()) do
         local aa24 = aa23.DisplayName .. " (@" .. aa23.Name .. ")"
@@ -51,6 +72,7 @@ local function aa21(aa22)
     return nil
 end
 
+-- Телепорт игрока
 local function aa25(aa26, aa27)
     if not aa26.Character then return end
     local aa28 = aa26.Character:FindFirstChild("HumanoidRootPart")
@@ -67,10 +89,12 @@ local function aa25(aa26, aa27)
     aa27.CFrame = aa29
 end
 
+-- Найти или ждать объект
 local function aa31(aa32, aa33, aa34)
     return aa32:FindFirstChild(aa33) or aa32:WaitForChild(aa33, aa34 or 5)
 end
 
+-- Отправить событие сети
 local function aa35(aa36)
     if aa36 and aa36:IsA("BasePart") then
         aa11:FireServer(aa36, aa36.CFrame)
@@ -78,10 +102,12 @@ local function aa35(aa36)
     end
 end
 
+-- Проверить наличие объекта
 local function aa37(aa38, aa39)
     return aa38:FindFirstChild(aa39) ~= nil
 end
 
+-- Создать игрушку
 local function aa40(aa41)
     local aa42 = aa4.Character or aa4.CharacterAdded:Wait()
     local aa43 = aa42:WaitForChild("HumanoidRootPart")
@@ -98,7 +124,7 @@ local function aa40(aa41)
     end
 
     local aa44 = aa43.CFrame * CFrame.new(0, 14, 20)
-    
+
     local aa45 = workspace:FindFirstChild(aa4.Name.."SpawnedInToys")
     if not aa45 then
         aa45 = workspace:FindFirstChild("PlotItems")
@@ -129,6 +155,7 @@ local function aa40(aa41)
     return aa46
 end
 
+-- Создать паллету для регдолла
 local function aa50()
     if aa17 then return nil end
     aa17 = true
@@ -184,7 +211,9 @@ local function aa50()
     return aa51
 end
 
--- ===== ラグ方式（秒間65回） ===== 変更点: 65Hz
+-- ==========================================
+-- ЛАГ-СПАМ
+-- ==========================================
 local function startLagSpam()
     if running then return end
     if not createLineRemote then return end
@@ -197,9 +226,13 @@ local function startLagSpam()
                 or (aa4.Character and aa4.Character:FindFirstChild("HumanoidRootPart"))
 
             if spawnLocation then
-                createLineRemote:FireServer(spawnLocation, CFrame.new(math.random(-2010000000, 2000000001), 0, math.random(-2008100000, 2000200000)))
+                createLineRemote:FireServer(spawnLocation, CFrame.new(
+                    math.random(-2010000000, 2000000001), 
+                    0, 
+                    math.random(-2008100000, 2000200000)
+                ))
             end
-            task.wait(1/65)  -- 65Hz（変更点）
+            task.wait(1/65)
         end
     end)
 end
@@ -208,15 +241,62 @@ local function stopLagSpam()
     if not running then return end
     running = false
 end
--- ================================================
 
-local aa56 = aa:MakeWindow({Name = "Grabkick", HidePremium = true, SaveConfig = false})
+-- ==========================================
+-- ФУНКЦИИ JERK OFF
+-- ==========================================
+function startJerkOff()
+    local plr = aa1.LocalPlayer
+    local char = plr.Character or plr.CharacterAdded:Wait()
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = hum
+    end
+    
+    local anim = Instance.new("Animation")
+    anim.AnimationId = jerkOffAnimId
+    jerkOffAnimTrack = animator:LoadAnimation(anim)
+    jerkOffAnimTrack.Priority = Enum.AnimationPriority.Action
+    jerkOffAnimTrack:Play()
+    
+    task.spawn(function()
+        while playJerkOffActive do
+            task.wait(0.1)
+            if jerkOffAnimTrack and jerkOffAnimTrack.IsPlaying then
+                jerkOffAnimTrack.TimePosition = 0.3
+            end
+        end
+    end)
+end
 
--- タブ1
-local aa57 = aa56:MakeTab({Name = "1", Icon = "rbxassetid://4483345998"})
+function stopJerkOff()
+    if jerkOffAnimTrack then
+        jerkOffAnimTrack:Stop()
+        jerkOffAnimTrack = nil
+    end
+end
 
+-- ==========================================
+-- СОЗДАНИЕ ГЛАВНОГО ОКНА
+-- ==========================================
+local aa56 = aa:MakeWindow({
+    Name = "Grabkick + Troll", 
+    HidePremium = true, 
+    SaveConfig = false
+})
+
+-- ==========================================
+-- ВКЛАДКА 1: GRABKICK
+-- ==========================================
+local aa57 = aa56:MakeTab({Name = "Grabkick", Icon = "rbxassetid://4483345998"})
+
+-- Выбор цели
 local aa58 = aa57:AddDropdown({
-    Name = "Target Player",
+    Name = "Целевой игрок",
     Default = "",
     Options = aa18(),
     Callback = function(aa59)
@@ -230,8 +310,9 @@ local aa58 = aa57:AddDropdown({
     end
 })
 
+-- Переключатель Grabkick
 aa57:AddToggle({
-    Name = "Grab kick (BETA)",
+    Name = "Захват + кик (BETA)",
     Default = false,
     Callback = function(aa61)
         aa6 = aa61
@@ -279,7 +360,7 @@ aa57:AddToggle({
                             aa68.Position = aa64.Position + Vector3.new(0, 15, 0)
                         end
                     end
-                    task.wait(1/65)   -- 65Hz（変更点）
+                    task.wait(1/65)
                 end
 
                 local aa69 = aa21(aa7)
@@ -292,6 +373,7 @@ aa57:AddToggle({
             end)
         end
 
+        -- Паллета-регдолл
         if aa61 then
             local aa71 = workspace:FindFirstChild(aa4.Name.."SpawnedInToys")
             local aa72 = nil
@@ -340,6 +422,147 @@ aa57:AddToggle({
     end
 })
 
+-- ==========================================
+-- ВКЛАДКА 2: TROLL
+-- ==========================================
+local TrollTab = aa56:MakeTab({Name = "Troll", Icon = "rbxassetid://4483345998"})
+local FanGroup = TrollTab:CreateBlock({Name = "Troll", Side = "Left"})
+
+-- КОКОСОВАЯ ОРБИТА
+FanGroup:CreateToggle({
+    Name = "Coconut Penis",  
+    Default = false,
+    Flag = "CoconutOrbit",
+    Callback = function(Value)
+        _G.En = Value
+        
+        if Value then
+            task.spawn(function()
+                local Me = aa1.LocalPlayer
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                
+                local SetNetworkOwner = ReplicatedStorage.GrabEvents.SetNetworkOwner
+                local SpawnToy = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+                local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+                
+                local Offsets = {
+                    [1] = CFrame.new(-0.45, -1.2, -0.7),
+                    [2] = CFrame.new(0.45, -1.2, -0.7),
+                    [3] = CFrame.new(0, -1, 0.8)
+                }
+                
+                local Length = 10
+                local Coconuts = {}
+                
+                while _G.En do
+                    local Char = Me.Character
+                    local Root = Char and Char:FindFirstChild("HumanoidRootPart")
+                    
+                    if not Root then 
+                        task.wait(0.1)
+                        continue 
+                    end
+                    
+                    Coconuts = {}
+                    for _, toy in pairs(workspace[Me.Name.."SpawnedInToys"]:GetChildren()) do
+                        if toy.Name == "FoodCoconut" then
+                            table.insert(Coconuts, toy)
+                        end
+                    end
+                    
+                    if #Coconuts < (Length + 2) then
+                        task.spawn(function()
+                            SpawnToy:InvokeServer("FoodCoconut", Root.CFrame * CFrame.new(-5, 0, 10), Vector3.zero)
+                        end)
+                    end
+                    
+                    for i, Coco in ipairs(Coconuts) do
+                        local Part = Coco:FindFirstChild("SoundPart")
+                        local HoldPart = Coco:FindFirstChild("HoldPart")
+                        local Rigid = HoldPart and HoldPart:FindFirstChild("RigidConstraint")
+                        local PartOwner = Part and Part:FindFirstChild("PartOwner")
+                        
+                        if Part and HoldPart and Rigid then
+                            if PartOwner and PartOwner.Value == Me.Name then
+                                if i <= 2 then
+                                    Part.CFrame = Root.CFrame * Offsets[i] * CFrame.new(Root.Velocity / 100)
+                                else
+                                    Part.CFrame = Root.CFrame * Offsets[3] * CFrame.new(Root.Velocity / 100) * CFrame.new(0, 0, Offsets[3].Z - (i + 0.2))
+                                end
+                                Part.Velocity = Vector3.zero
+                            end
+                            
+                            if not PartOwner or PartOwner.Value ~= Me.Name then
+                                SetNetworkOwner:FireServer(Part, Part.CFrame)
+                            end
+                            
+                            if Rigid.Attachment1 then
+                                DestroyToy:FireServer(Coco)
+                            end
+                            
+                            for _, part in pairs(Coco:GetChildren()) do
+                                if part:IsA("BasePart") then
+                                    part.CanCollide = false
+                                    part.CanQuery = false
+                                    if part.Transparency ~= 1 then
+                                        part.Transparency = 0
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    task.wait(0.01)
+                end
+            end)
+        end
+    end
+})
+
+-- JERK OFF (анимация)
+FanGroup:CreateToggle({
+    Name = "Jerk Off",
+    Flag = "Jerk Off",
+    Default = false,
+    Callback = function(on)
+        playJerkOffActive = on
+        if on then
+            startJerkOff()
+        else
+            stopJerkOff()
+        end
+    end
+})
+
+-- ВЫБОР КЛАВИШИ
+FanGroup:CreateDropdown({
+    Name = "Toggle Key",
+    Flag = "Toggle Key",
+    Items = {"Q", "E", "R", "T"},
+    Default = "Q",
+    Callback = function(v)
+        selectedKey = Enum.KeyCode[v]
+    end
+})
+
+-- ==========================================
+-- ОБРАБОТЧИК КЛАВИШИ ДЛЯ JERK OFF
+-- ==========================================
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == selectedKey then
+        playJerkOffActive = not playJerkOffActive
+        if playJerkOffActive then
+            startJerkOff()
+        else
+            stopJerkOff()
+        end
+    end
+end)
+
+-- ==========================================
+-- ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ
+-- ==========================================
 local function aa79(aa80)
     if aa80 and aa14.aa15 == aa80.Name then
         aa14.aa15 = nil
@@ -353,183 +576,7 @@ aa1.PlayerAdded:Connect(function()
 end)
 aa1.PlayerRemoving:Connect(aa79)
 
+-- ==========================================
+-- ЗАПУСК
+-- ==========================================
 aa:Init()
-local FanGroup = Tabs.Misc:CreateBlock({
-    Name = "Troll",
-    Side = "Left"
-})
-
--- =========================================
--- Jerk Off Animation
--- =========================================
-
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-
-local playJerkOffActive = false
-local jerkOffAnimTrack = nil
-
-local jerkOffAnimId = "rbxassetid://168268306"
-local selectedKey = Enum.KeyCode.Q
-
-
--- =========================================
--- Stop animation
--- =========================================
-
-local function stopJerkOff()
-    if jerkOffAnimTrack then
-        pcall(function()
-            jerkOffAnimTrack:Stop(0.15)
-            jerkOffAnimTrack:Destroy()
-        end)
-
-        jerkOffAnimTrack = nil
-    end
-end
-
-
--- =========================================
--- Start animation
--- =========================================
-
-local function startJerkOff()
-    -- Останавливаем предыдущую анимацию
-    stopJerkOff()
-
-    local Character = LocalPlayer.Character
-        or LocalPlayer.CharacterAdded:Wait()
-
-    if not Character then
-        return
-    end
-
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-
-    if not Humanoid then
-        return
-    end
-
-    local Animator = Humanoid:FindFirstChildOfClass("Animator")
-
-    if not Animator then
-        Animator = Instance.new("Animator")
-        Animator.Parent = Humanoid
-    end
-
-    local Animation = Instance.new("Animation")
-    Animation.AnimationId = jerkOffAnimId
-
-    local success, Track = pcall(function()
-        return Animator:LoadAnimation(Animation)
-    end)
-
-    Animation:Destroy()
-
-    if not success or not Track then
-        return
-    end
-
-    jerkOffAnimTrack = Track
-    jerkOffAnimTrack.Priority = Enum.AnimationPriority.Action
-    jerkOffAnimTrack.Looped = true
-
-    pcall(function()
-        jerkOffAnimTrack:Play(0.15)
-    end)
-end
-
-
--- =========================================
--- Toggle
--- =========================================
-
-FanGroup:CreateToggle({
-    Name = "Jerk Off",
-    Flag = "JerkOff",
-    Default = false,
-
-    Callback = function(Value)
-        playJerkOffActive = Value
-
-        if Value then
-            startJerkOff()
-        else
-            stopJerkOff()
-        end
-    end
-})
-
-
--- =========================================
--- Toggle Key
--- =========================================
-
-FanGroup:CreateDropdown({
-    Name = "Toggle Key",
-    Flag = "ToggleKey",
-
-    Items = {
-        "Q",
-        "E",
-        "R",
-        "T"
-    },
-
-    Default = "Q",
-
-    Callback = function(Value)
-        local KeyCode = Enum.KeyCode[Value]
-
-        if KeyCode then
-            selectedKey = KeyCode
-        end
-    end
-})
-
-
--- =========================================
--- Keyboard Bind
--- =========================================
-
-UserInputService.InputBegan:Connect(function(Input, GameProcessed)
-    if GameProcessed then
-        return
-    end
-
-    if Input.UserInputType ~= Enum.UserInputType.Keyboard then
-        return
-    end
-
-    if Input.KeyCode ~= selectedKey then
-        return
-    end
-
-    playJerkOffActive = not playJerkOffActive
-
-    if playJerkOffActive then
-        startJerkOff()
-    else
-        stopJerkOff()
-    end
-end)
-
-
--- =========================================
--- Character Respawn
--- =========================================
-
-LocalPlayer.CharacterAdded:Connect(function()
-    stopJerkOff()
-
-    if playJerkOffActive then
-        task.wait(0.5)
-
-        if playJerkOffActive then
-            startJerkOff()
-        end
-    end
-end)
-
