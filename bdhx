@@ -1,541 +1,856 @@
-local aa = loadstring(game:HttpGet("https://raw.githubusercontent.com/jadpy/suki/refs/heads/main/orion"))()
-local aa1 = game:GetService("Players")
-local aa2 = game:GetService("ReplicatedStorage")
-local aa3 = game:GetService("RunService")
-local aa82 = game:GetService("Workspace")
+-- ==============================================================================
+-- れもにーHUB (LemonHUB) - 完全版（再起動防止ブロッカー付き）
+-- オブジェクトタブ/バリア破壊機能削除済み / 使用期間 30分 (1800秒)
+-- ==============================================================================
 
-local aa4 = aa1.LocalPlayer
-local aa5 = aa2:WaitForChild("GrabEvents")
-
-local aa6 = false
-local aa7 = ""
-local aa8 = 15
-local aa9 = 25
-
-local aa10 = aa2:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
-local aa11 = aa5:WaitForChild("SetNetworkOwner")
-
-local aa12 = {
-    aa13 = false
-}
-local aa14 = {
-    aa15 = nil,
-}
-local aa16 = {}
-local aa17 = false
-
--- ===== ラグ方式（秒間65回） ===== 変更点: 65Hz
-local running = false
-local ragServer = false
-local targetLag = false
-local selectedPlayerName = nil
-
-local createLineRemote = aa5:FindFirstChild("CreateGrabLine")
--- ================================================
-
-local function aa18()
-    local aa19 = {}
-    for _, aa20 in ipairs(aa1:GetPlayers()) do
-        if aa20 ~= aa4 then
-            table.insert(aa19, aa20.DisplayName .. " (@" .. aa20.Name .. ")")
-        end
-    end
-    return aa19
-end
-
-local function aa21(aa22)
-    for _, aa23 in ipairs(aa1:GetPlayers()) do
-        local aa24 = aa23.DisplayName .. " (@" .. aa23.Name .. ")"
-        if aa24 == aa22 then return aa23 end
-    end
-    return nil
-end
-
-local function aa25(aa26, aa27)
-    if not aa26.Character then return end
-    local aa28 = aa26.Character:FindFirstChild("HumanoidRootPart")
-    if not aa28 or not aa27 then return end
-
-    local aa29 = aa27.CFrame
-    aa27.CFrame = aa28.CFrame * CFrame.new(0, 0, 2)
-
-    for aa30 = 1, 15 do
-        aa11:FireServer(aa28, aa28.CFrame)
-        task.wait(0.000214)
-    end
-
-    aa27.CFrame = aa29
-end
-
-local function aa31(aa32, aa33, aa34)
-    return aa32:FindFirstChild(aa33) or aa32:WaitForChild(aa33, aa34 or 5)
-end
-
-local function aa35(aa36)
-    if aa36 and aa36:IsA("BasePart") then
-        aa11:FireServer(aa36, aa36.CFrame)
-        task.wait(0.02)
-    end
-end
-
-local function aa37(aa38, aa39)
-    return aa38:FindFirstChild(aa39) ~= nil
-end
-
-local function aa40(aa41)
-    local aa42 = aa4.Character or aa4.CharacterAdded:Wait()
-    local aa43 = aa42:WaitForChild("HumanoidRootPart")
-
-    local waitCount = 0
-    while (aa4.InPlot.Value and not aa4.InOwnedPlot.Value) and waitCount < 50 do
-        task.wait(0.1)
-        waitCount = waitCount + 1
-    end
-    waitCount = 0
-    while not aa4.CanSpawnToy.Value and waitCount < 50 do
-        task.wait(0.1)
-        waitCount = waitCount + 1
-    end
-
-    local aa44 = aa43.CFrame * CFrame.new(0, 14, 20)
-    
-    local aa45 = workspace:FindFirstChild(aa4.Name.."SpawnedInToys")
-    if not aa45 then
-        aa45 = workspace:FindFirstChild("PlotItems")
-        if aa45 then
-            aa45 = aa45:FindFirstChild("Plot1")
-        end
-    end
-    if not aa45 then
-        aa45 = workspace
-    end
-
-    local aa46 = nil
-    local aa47 = aa45.ChildAdded:Connect(function(aa48)
-        if aa48.Name == aa41 then
-            aa46 = aa48
-        end
+-- =====================================================
+-- ★★★ 再起動防止ブロッカー（初回のみ実行） ★★★
+-- =====================================================
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("LemonHub_Blocker") then
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🚫 ブロック済み",
+            Text = "れもにーHUBは既に起動しています。再起動はできません。",
+            Duration = 3,
+        })
     end)
-
-    task.spawn(function()
-        pcall(function()
-            aa10:InvokeServer(aa41, aa44, Vector3.zero)
-        end)
-    end)
-
-    local aa49 = tick()
-    repeat task.wait(0.05) until aa46 or (tick() - aa49) > 5
-    aa47:Disconnect()
-    return aa46
+    return -- ここで完全に終了
 end
 
-local function aa50()
-    if aa17 then return nil end
-    aa17 = true
+-- ブロッカーフラグを作成（これにより2回目以降は上記のif文で弾かれる）
+local blocker = Instance.new("BoolValue")
+blocker.Name = "LemonHub_Blocker"
+blocker.Parent = CoreGui
 
-    local aa51 = aa40("PalletLightBrown")
-    if not aa51 then
-        aa17 = false
-        return nil
-    end
-
-    local aa52 = aa31(aa51, "SoundPart", 3)
-    if not aa52 then
-        aa51:Destroy()
-        aa17 = false
-        return nil
-    end
-
-    local retryCount = 0
-    while retryCount < 10 do
-        if not aa12.aa13 then
-            aa51:Destroy()
-            aa17 = false
-            return nil
-        end
-        aa35(aa52)
-        task.wait(0.05)
-        if aa37(aa52, "PartOwner") then
-            break
-        end
-        retryCount = retryCount + 1
-    end
-
-    if not aa37(aa52, "PartOwner") then
-        aa51:Destroy()
-        aa17 = false
-        return nil
-    end
-
-    for _, aa54 in pairs(aa51:GetDescendants()) do
-        if aa54:IsA("BasePart") then
-            aa54.CanCollide = false
-            aa54.Transparency = 0.8
-        end
-    end
-    aa51.Name = "RagdollPalete"
-
-    local aa55 = Instance.new("BodyVelocity")
-    aa55.MaxForce = Vector3.new(0, math.huge, 0)
-    aa55.Velocity = Vector3.new(0, 900, 0)
-    aa55.Parent = aa52
-
-    aa17 = false
-    return aa51
-end
-
--- ===== ラグ方式（秒間65回） ===== 変更点: 65Hz
-local function startLagSpam()
-    if running then return end
-    if not createLineRemote then return end
-    running = true
-
-    task.spawn(function()
-        while running do
-            local spawnLocation = aa82:FindFirstChild("SpawnLocation")
-                or aa82:FindFirstChild("Spawn")
-                or (aa4.Character and aa4.Character:FindFirstChild("HumanoidRootPart"))
-
-            if spawnLocation then
-                createLineRemote:FireServer(spawnLocation, CFrame.new(math.random(-2010000000, 2000000001), 0, math.random(-2008100000, 2000200000)))
-            end
-            task.wait(1/65)  -- 65Hz（変更点）
-        end
-    end)
-end
-
-local function stopLagSpam()
-    if not running then return end
-    running = false
-end
--- ================================================
-
-local aa56 = aa:MakeWindow({Name = "Grabkick", HidePremium = true, SaveConfig = false})
-
--- タブ1
-local aa57 = aa56:MakeTab({Name = "1", Icon = "rbxassetid://4483345998"})
-
-local aa58 = aa57:AddDropdown({
-    Name = "Target Player",
-    Default = "",
-    Options = aa18(),
-    Callback = function(aa59)
-        aa7 = aa59
-        local aa60 = aa21(aa59)
-        if aa60 then
-            aa14.aa15 = aa60.Name
-        else
-            aa14.aa15 = nil
-        end
-    end
-})
-
-aa57:AddToggle({
-    Name = "Grab kick (BETA)",
-    Default = false,
-    Callback = function(aa61)
-        aa6 = aa61
-        aa12.aa13 = aa61
-
-        if aa61 then
-            startLagSpam()
-        else
-            stopLagSpam()
-        end
-
-        if aa6 then
-            task.spawn(function()
-                while aa6 do
-                    local aa62 = aa21(aa7)
-                    local aa63 = aa4.Character
-                    local aa64 = aa63 and aa63:FindFirstChild("HumanoidRootPart")
-
-                    if aa62 and aa64 then
-                        local aa65 = aa62.Character
-                        local aa66 = aa65 and aa65:FindFirstChild("HumanoidRootPart")
-
-                        if aa66 then
-                            local aa67 = (aa64.Position - aa66.Position).Magnitude
-                            if aa67 > aa9 then
-                                aa25(aa62, aa64)
-                            end
-
-                            aa11:FireServer(aa66, aa66.CFrame)
-                            if aa5:FindFirstChild("DestroyGrabLine") then
-                                aa5.DestroyGrabLine:FireServer(aa66)
-                            end
-
-                            aa66.AssemblyLinearVelocity = Vector3.zero
-                            aa66.AssemblyAngularVelocity = Vector3.zero
-
-                            local aa68 = aa66:FindFirstChild("ControlBP")
-                            if not aa68 then
-                                aa68 = Instance.new("BodyPosition")
-                                aa68.Name = "ControlBP"
-                                aa68.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                                aa68.P = 800000
-                                aa68.Parent = aa66
-                            end
-                            aa68.Position = aa64.Position + Vector3.new(0, 15, 0)
-                        end
-                    end
-                    task.wait(1/65)   -- 65Hz（変更点）
-                end
-
-                local aa69 = aa21(aa7)
-                if aa69 and aa69.Character then
-                    local aa70 = aa69.Character:FindFirstChild("HumanoidRootPart")
-                    if aa70 and aa70:FindFirstChild("ControlBP") then
-                        aa70.ControlBP:Destroy()
-                    end
-                end
-            end)
-        end
-
-        if aa61 then
-            local aa71 = workspace:FindFirstChild(aa4.Name.."SpawnedInToys")
-            local aa72 = nil
-
-            aa16["aa73"] = aa3.RenderStepped:Connect(function()
-                if not aa12.aa13 then return end
-                if not aa14.aa15 then return end
-
-                local aa74 = aa1:FindFirstChild(aa14.aa15)
-                if not aa74 or not aa74.Character then return end
-
-                local aa75 = aa74.Character:FindFirstChild("HumanoidRootPart")
-                local aa76 = aa74.Character:FindFirstChild("Humanoid")
-                if not aa75 or not aa76 then return end
-
-                if aa72 and aa72:IsDescendantOf(workspace) then
-                    local aa77 = aa72:FindFirstChild("SoundPart")
-                    if aa77 then
-                        if not aa37(aa77, "PartOwner") then
-                            aa72:Destroy()
-                            aa72 = nil
-                        end
-                    else
-                        aa72:Destroy()
-                        aa72 = nil
-                    end
-                end
-
-                if not aa17 and (not aa72 or not aa72:IsDescendantOf(workspace)) then
-                    aa72 = aa71 and aa71:FindFirstChild("RagdollPalete") or aa50()
-                end
-
-                if aa72 and aa72:FindFirstChild("SoundPart") then
-                    local aa78 = aa76:FindFirstChild("Ragdolled")
-                    if aa78 and not aa78.Value then
-                        aa72.SoundPart.Position = aa75.Position
-                    end
-                end
-            end)
-        else
-            if aa16["aa73"] then
-                aa16["aa73"]:Disconnect()
-                aa16["aa73"] = nil
-            end
-        end
-    end
-})
-
-local function aa79(aa80)
-    if aa80 and aa14.aa15 == aa80.Name then
-        aa14.aa15 = nil
-    end
-    aa58:Refresh(aa18(), true)
-end
-
-aa1.PlayerAdded:Connect(function()
-    task.wait(0.5)
-    aa79()
-end)
-aa1.PlayerRemoving:Connect(aa79)
-
-aa:Init()
-local FanGroup = Tabs.Misc:CreateBlock({Name = "Troll", Side = "Left"})
--- ===========================
--- Toggle "Jerk Off" (Fan в†’ Troll)
--- ===========================
-
+-- =====================================================
+-- 以降、通常のメインスクリプト
+-- =====================================================
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 
-local playJerkOffActive = false
-local jerkOffAnimTrack = nil
-local jerkOffAnimId = "rbxassetid://168268306" -- Р°РЅРёРјР°С†РёСЏ
-local selectedKey = Enum.KeyCode.Q -- РєР»Р°РІРёС€Р° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+-- =====================================================
+-- パスワード設定（ここを変更してください）
+-- =====================================================
+local PASSWORD = "45451919"  -- 8桁の数字
 
--- в–¶ Р·Р°РїСѓСЃРє Р°РЅРёРјР°С†РёРё
-function startJerkOff()
-	local plr = Players.LocalPlayer
-	local char = plr.Character or plr.CharacterAdded:Wait()
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		return
-	end
-	local animator = hum:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = hum
-	end
-	local anim = Instance.new("Animation")
-	anim.AnimationId = jerkOffAnimId
-	jerkOffAnimTrack = animator:LoadAnimation(anim)
-	jerkOffAnimTrack.Priority = Enum.AnimationPriority.Action
-	jerkOffAnimTrack:Play()
-	task.spawn(function()
-		while playJerkOffActive do
-			task.wait(0.1)
-			if jerkOffAnimTrack and jerkOffAnimTrack.IsPlaying then
-				jerkOffAnimTrack.TimePosition = 0.3
-			end
-		end
-	end)
+-- =====================================================
+-- パスワード認証GUI（スマホ専用・リアルハッキング風）
+-- =====================================================
+local passwordCorrect = false
+local passwordAttempt = ""
+
+local function createPasswordGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PasswordScreen"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Parent = CoreGui
+
+    -- 背景（暗いグリッド風）
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+    bg.BackgroundTransparency = 0.2
+    bg.Parent = screenGui
+
+    -- ノイズオーバーレイ
+    local noise = Instance.new("Frame")
+    noise.Size = UDim2.new(1, 0, 1, 0)
+    noise.BackgroundTransparency = 0.85
+    noise.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    noise.Parent = screenGui
+    task.spawn(function()
+        while true do
+            noise.BackgroundColor3 = Color3.fromRGB(
+                math.random(0, 30),
+                math.random(0, 30),
+                math.random(20, 50)
+            )
+            noise.BackgroundTransparency = math.random(80, 95) / 100
+            task.wait(0.05)
+        end
+    end)
+
+    -- スキャンライン（動く）
+    for i = 1, 8 do
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(1, 0, 0, 1)
+        line.Position = UDim2.new(0, 0, (i - 1) / 8, 0)
+        line.BackgroundColor3 = Color3.fromRGB(0, 255, 200)
+        line.BackgroundTransparency = 0.95
+        line.Parent = screenGui
+        task.spawn(function()
+            while true do
+                line.Position = UDim2.new(0, 0, math.random(), 0)
+                line.BackgroundTransparency = 0.85 + math.random() * 0.1
+                task.wait(0.03)
+            end
+        end)
+    end
+
+    -- メインパネル（スマホ向けに大きめ）
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 400, 0, 520)
+    panel.Position = UDim2.new(0.5, -200, 0.5, -260)
+    panel.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+    panel.BorderSizePixel = 2
+    panel.BorderColor3 = Color3.fromRGB(0, 200, 255)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = screenGui
+
+    -- タイトル
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 50)
+    title.Position = UDim2.new(0, 0, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = "🔐 SYSTEM ACCESS"
+    title.TextColor3 = Color3.fromRGB(0, 255, 200)
+    title.TextScaled = true
+    title.Font = Enum.Font.Code
+    title.TextStrokeTransparency = 0
+    title.TextStrokeColor3 = Color3.fromRGB(0, 100, 200)
+    title.Parent = panel
+
+    -- サブタイトル
+    local sub = Instance.new("TextLabel")
+    sub.Size = UDim2.new(1, 0, 0, 30)
+    sub.Position = UDim2.new(0, 0, 0.15, 0)
+    sub.BackgroundTransparency = 1
+    sub.Text = "ENTER PASSWORD"
+    sub.TextColor3 = Color3.fromRGB(150, 150, 200)
+    sub.TextScaled = true
+    sub.Font = Enum.Font.Code
+    sub.Parent = panel
+
+    -- パスワード表示欄
+    local display = Instance.new("TextLabel")
+    display.Size = UDim2.new(0.8, 0, 0, 50)
+    display.Position = UDim2.new(0.1, 0, 0.25, 0)
+    display.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    display.BorderSizePixel = 1
+    display.BorderColor3 = Color3.fromRGB(0, 255, 200)
+    display.Text = ""
+    display.TextColor3 = Color3.fromRGB(0, 255, 200)
+    display.TextScaled = true
+    display.Font = Enum.Font.Code
+    display.TextXAlignment = Enum.TextXAlignment.Center
+    display.Parent = panel
+
+    -- ボタン用グリッド（数字用とアクション用に分割）
+    local grid = Instance.new("Frame")
+    grid.Size = UDim2.new(0.95, 0, 0.45, 0)
+    grid.Position = UDim2.new(0.025, 0, 0.40, 0)
+    grid.BackgroundTransparency = 1
+    grid.Parent = panel
+
+    -- 左側：数字ボタン用（3x3）
+    local numGrid = Instance.new("Frame")
+    numGrid.Size = UDim2.new(0.68, 0, 1, 0)
+    numGrid.Position = UDim2.new(0, 0, 0, 0)
+    numGrid.BackgroundTransparency = 1
+    numGrid.Parent = grid
+
+    -- 右側：アクションボタン用（決定・削除）
+    local actionGrid = Instance.new("Frame")
+    actionGrid.Size = UDim2.new(0.30, 0, 1, 0)
+    actionGrid.Position = UDim2.new(0.70, 0, 0, 0)
+    actionGrid.BackgroundTransparency = 1
+    actionGrid.Parent = grid
+
+    -- 数字ボタン作成（3x3）
+    local numSize = UDim2.new(0.30, -4, 0.30, -4)
+    local spacing = 0.035
+
+    for i = 1, 9 do
+        local row = math.floor((i-1) / 3)
+        local col = (i-1) % 3
+        local btn = Instance.new("TextButton")
+        btn.Size = numSize
+        btn.Position = UDim2.new(col * (0.30 + spacing) + 0.015, 0, row * (0.30 + spacing) + 0.015, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+        btn.BorderSizePixel = 2
+        btn.BorderColor3 = Color3.fromRGB(0, 200, 255)
+        btn.Text = tostring(i)
+        btn.TextColor3 = Color3.fromRGB(200, 230, 255)
+        btn.TextScaled = true
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = numGrid
+
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+            btn.BorderColor3 = Color3.fromRGB(0, 255, 255)
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+            btn.BorderColor3 = Color3.fromRGB(0, 200, 255)
+        end)
+        btn.MouseButton1Click:Connect(function()
+            if #passwordAttempt < 8 then
+                passwordAttempt = passwordAttempt .. tostring(i)
+                display.Text = string.rep("●", #passwordAttempt)
+            end
+        end)
+    end
+
+    -- ★ 決定ボタン（縦長・右側） ★
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.9, 0, 0.60, 0)
+    enterBtn.Position = UDim2.new(0.05, 0, 0.02, 0)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 200)
+    enterBtn.BorderSizePixel = 2
+    enterBtn.BorderColor3 = Color3.fromRGB(100, 255, 255)
+    enterBtn.Text = "✔\n決定"
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.TextScaled = true
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = actionGrid
+
+    enterBtn.MouseEnter:Connect(function()
+        enterBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 240)
+        enterBtn.BorderColor3 = Color3.fromRGB(150, 255, 255)
+    end)
+    enterBtn.MouseLeave:Connect(function()
+        enterBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 200)
+        enterBtn.BorderColor3 = Color3.fromRGB(100, 255, 255)
+    end)
+    enterBtn.MouseButton1Click:Connect(function()
+        if passwordAttempt == PASSWORD then
+            passwordCorrect = true
+            screenGui:Destroy()
+        else
+            display.Text = "⚠ ACCESS DENIED"
+            display.TextColor3 = Color3.fromRGB(255, 0, 0)
+            display.BorderColor3 = Color3.fromRGB(255, 0, 0)
+            task.wait(0.8)
+            passwordAttempt = ""
+            display.Text = ""
+            display.TextColor3 = Color3.fromRGB(0, 255, 200)
+            display.BorderColor3 = Color3.fromRGB(0, 255, 200)
+        end
+    end)
+
+    -- ★ 削除ボタン（決定ボタンの下） ★
+    local clearBtn = Instance.new("TextButton")
+    clearBtn.Size = UDim2.new(0.9, 0, 0.28, 0)
+    clearBtn.Position = UDim2.new(0.05, 0, 0.66, 0)
+    clearBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+    clearBtn.BorderSizePixel = 2
+    clearBtn.BorderColor3 = Color3.fromRGB(255, 50, 50)
+    clearBtn.Text = "削除"
+    clearBtn.TextColor3 = Color3.fromRGB(255, 200, 200)
+    clearBtn.TextScaled = true
+    clearBtn.Font = Enum.Font.GothamBold
+    clearBtn.Parent = actionGrid
+
+    clearBtn.MouseEnter:Connect(function()
+        clearBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+        clearBtn.BorderColor3 = Color3.fromRGB(255, 100, 100)
+    end)
+    clearBtn.MouseLeave:Connect(function()
+        clearBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        clearBtn.BorderColor3 = Color3.fromRGB(255, 50, 50)
+    end)
+    clearBtn.MouseButton1Click:Connect(function()
+        passwordAttempt = string.sub(passwordAttempt, 1, -2)
+        display.Text = string.rep("●", #passwordAttempt)
+    end)
+
+    -- ★ キャンセルボタン（右上） ★
+    local cancelBtn = Instance.new("TextButton")
+    cancelBtn.Size = UDim2.new(0, 40, 0, 40)
+    cancelBtn.Position = UDim2.new(1, -50, 0, 10)
+    cancelBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    cancelBtn.BorderSizePixel = 1
+    cancelBtn.BorderColor3 = Color3.fromRGB(150, 150, 150)
+    cancelBtn.Text = "✖"
+    cancelBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    cancelBtn.TextScaled = true
+    cancelBtn.Font = Enum.Font.GothamBold
+    cancelBtn.Parent = panel
+    cancelBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+        showHackingScreen()
+        error("パスワード認証をキャンセルしました")
+    end)
+
+    -- ステータスバー
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(1, 0, 0, 30)
+    status.Position = UDim2.new(0, 0, 0.94, 0)
+    status.BackgroundTransparency = 1
+    status.Text = "🔒 セキュア接続 · 暗号化済み"
+    status.TextColor3 = Color3.fromRGB(100, 200, 100)
+    status.TextScaled = true
+    status.Font = Enum.Font.Code
+    status.Parent = panel
+
+    -- ★ Enterキーでも決定できるようにする ★
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.Return then
+            if passwordAttempt == PASSWORD then
+                passwordCorrect = true
+                screenGui:Destroy()
+            else
+                display.Text = "⚠ ACCESS DENIED"
+                display.TextColor3 = Color3.fromRGB(255, 0, 0)
+                display.BorderColor3 = Color3.fromRGB(255, 0, 0)
+                task.wait(0.8)
+                passwordAttempt = ""
+                display.Text = ""
+                display.TextColor3 = Color3.fromRGB(0, 255, 200)
+                display.BorderColor3 = Color3.fromRGB(0, 255, 200)
+            end
+        end
+    end)
 end
 
--- вЏ№ РѕСЃС‚Р°РЅРѕРІРєР°
-function stopJerkOff()
-	if jerkOffAnimTrack then
-		jerkOffAnimTrack:Stop()
-		jerkOffAnimTrack = nil
-	end
+function showHackingScreen()
+    for _, v in pairs(CoreGui:GetChildren()) do
+        if v:IsA("ScreenGui") then v.Enabled = false end
+    end
+    for _, v in pairs(game:GetService("SoundService"):GetChildren()) do
+        if v:IsA("Sound") then v:Stop() end
+    end
+    local hackGui = Instance.new("ScreenGui")
+    hackGui.Name = "HackingScreen"
+    hackGui.ResetOnSpawn = false
+    hackGui.IgnoreGuiInset = true
+    hackGui.Parent = CoreGui
+    local background = Instance.new("Frame")
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    background.BackgroundTransparency = 0
+    background.Parent = hackGui
+    local noiseOverlay = Instance.new("Frame")
+    noiseOverlay.Size = UDim2.new(1, 0, 1, 0)
+    noiseOverlay.BackgroundTransparency = 0.85
+    noiseOverlay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    noiseOverlay.Parent = hackGui
+    task.spawn(function()
+        while true do
+            noiseOverlay.BackgroundColor3 = Color3.fromRGB(math.random(0,30), math.random(0,30), math.random(0,30))
+            noiseOverlay.BackgroundTransparency = math.random(80,95)/100
+            task.wait(0.05)
+        end
+    end)
+    for i = 1, 15 do
+        local scanLine = Instance.new("Frame")
+        scanLine.Size = UDim2.new(1, 0, 0, 1)
+        scanLine.Position = UDim2.new(0, 0, (i-1)/15, 0)
+        scanLine.BackgroundColor3 = Color3.fromRGB(0,255,0)
+        scanLine.BackgroundTransparency = 0.95
+        scanLine.Parent = hackGui
+        task.spawn(function()
+            while true do
+                scanLine.Position = UDim2.new(0, 0, math.random(), 0)
+                scanLine.BackgroundTransparency = 0.85 + math.random()*0.1
+                task.wait(0.02)
+            end
+        end)
+    end
+    local matrixLabel = Instance.new("TextLabel")
+    matrixLabel.Size = UDim2.new(1, 0, 1, 0)
+    matrixLabel.BackgroundTransparency = 1
+    matrixLabel.Text = ""
+    matrixLabel.TextColor3 = Color3.fromRGB(0,255,0)
+    matrixLabel.TextScaled = false
+    matrixLabel.Font = Enum.Font.Code
+    matrixLabel.TextSize = 12
+    matrixLabel.TextWrapped = true
+    matrixLabel.TextXAlignment = Enum.TextXAlignment.Left
+    matrixLabel.TextYAlignment = Enum.TextYAlignment.Top
+    matrixLabel.Parent = background
+    local chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{}|;:,.<>?/~"
+    local matrixLines = {}
+    for i = 1, 60 do
+        local line = ""
+        for j = 1, 100 do line = line .. chars:sub(math.random(1,#chars), math.random(1,#chars)) end
+        matrixLines[i] = line
+    end
+    local currentLines = {}
+    for i = 1, 60 do currentLines[i] = "" end
+    local mainWarning = Instance.new("Frame")
+    mainWarning.Size = UDim2.new(0, 600, 0, 300)
+    mainWarning.Position = UDim2.new(0.5, -300, 0.5, -150)
+    mainWarning.BackgroundTransparency = 0.7
+    mainWarning.BackgroundColor3 = Color3.fromRGB(10,10,10)
+    mainWarning.BorderSizePixel = 3
+    mainWarning.BorderColor3 = Color3.fromRGB(255,0,0)
+    mainWarning.Parent = hackGui
+    task.spawn(function()
+        while true do
+            mainWarning.BorderColor3 = Color3.fromRGB(math.random(200,255), math.random(0,50), math.random(0,50))
+            mainWarning.BorderSizePixel = math.random(1,5)
+            task.wait(0.1)
+        end
+    end)
+    local warningIcon = Instance.new("TextLabel")
+    warningIcon.Size = UDim2.new(0,80,0,80)
+    warningIcon.Position = UDim2.new(0.5,-40,0,10)
+    warningIcon.BackgroundTransparency = 1
+    warningIcon.Text = "⚠️"
+    warningIcon.TextColor3 = Color3.fromRGB(255,0,0)
+    warningIcon.TextScaled = true
+    warningIcon.Font = Enum.Font.GothamBold
+    warningIcon.Parent = mainWarning
+    local mainText = Instance.new("TextLabel")
+    mainText.Size = UDim2.new(1,0,0,60)
+    mainText.Position = UDim2.new(0,0,0.3,0)
+    mainText.BackgroundTransparency = 1
+    mainText.Text = "⚠️ セキュリティ侵害検出 ⚠️"
+    mainText.TextColor3 = Color3.fromRGB(255,0,0)
+    mainText.TextScaled = true
+    mainText.Font = Enum.Font.GothamBold
+    mainText.TextStrokeTransparency = 0
+    mainText.TextStrokeColor3 = Color3.fromRGB(255,0,0)
+    mainText.Parent = mainWarning
+    local subText = Instance.new("TextLabel")
+    subText.Size = UDim2.new(1,0,0,50)
+    subText.Position = UDim2.new(0,0,0.5,0)
+    subText.BackgroundTransparency = 1
+    subText.Text = "不正アクセスを検出しました"
+    subText.TextColor3 = Color3.fromRGB(200,200,200)
+    subText.TextScaled = true
+    subText.Font = Enum.Font.Gotham
+    subText.Parent = mainWarning
+    local ipText = Instance.new("TextLabel")
+    ipText.Size = UDim2.new(1,0,0,40)
+    ipText.Position = UDim2.new(0,0,0.7,0)
+    ipText.BackgroundTransparency = 1
+    local fakeIP = string.format("%d.%d.%d.%d", math.random(1,255), math.random(1,255), math.random(1,255), math.random(1,255))
+    ipText.Text = "IPアドレス: " .. fakeIP .. " を記録しました"
+    ipText.TextColor3 = Color3.fromRGB(0,255,0)
+    ipText.TextScaled = true
+    ipText.Font = Enum.Font.Gotham
+    ipText.Parent = mainWarning
+    task.spawn(function()
+        while true do
+            for i = 1, 60 do
+                local line = matrixLines[i]
+                local newLine = ""
+                for j = 1, #line do
+                    if math.random(1,10) > 2 then newLine = newLine .. line:sub(j,j)
+                    else newLine = newLine .. chars:sub(math.random(1,#chars), math.random(1,#chars)) end
+                end
+                matrixLines[i] = newLine
+                currentLines[i] = newLine
+            end
+            local text = ""
+            for i = 1, 60 do text = text .. currentLines[i] .. "\n" end
+            matrixLabel.Text = text
+            task.wait(0.03)
+        end
+    end)
+    local fadeFrame = Instance.new("Frame")
+    fadeFrame.Size = UDim2.new(1,0,1,0)
+    fadeFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    fadeFrame.BackgroundTransparency = 0
+    fadeFrame.Parent = hackGui
 end
-FanGroup:CreateToggle({
-    Name = "Coconut Penis",  
+
+createPasswordGUI()
+repeat task.wait() until passwordCorrect
+print("✅ パスワード認証成功: " .. LocalPlayer.Name)
+
+-- =====================================================
+-- ここからメインHUB（全機能）
+-- =====================================================
+
+local function showHackMessage(text, color, duration)
+    color = color or Color3.fromRGB(0,255,0)
+    duration = duration or 2
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "HackMessage"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("CoreGui")
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1,0,0,60)
+    frame.Position = UDim2.new(0,0,0,0)
+    frame.BackgroundTransparency = 0.2
+    frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = color
+    frame.Parent = screenGui
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = color
+    label.TextScaled = true
+    label.Font = Enum.Font.Code
+    label.TextWrapped = true
+    label.Parent = frame
+    task.delay(duration, function()
+        frame:TweenSize(UDim2.new(1,0,0,0), "Out", "Quad", 0.5, true)
+        task.wait(0.6)
+        screenGui:Destroy()
+    end)
+end
+
+local function screenFlash(color, duration)
+    color = color or Color3.fromRGB(255,0,0)
+    duration = duration or 0.3
+    local flash = Instance.new("Frame")
+    flash.Size = UDim2.new(1,0,1,0)
+    flash.BackgroundColor3 = color
+    flash.BackgroundTransparency = 0.8
+    flash.BorderSizePixel = 0
+    flash.Parent = game:GetService("CoreGui")
+    flash.ZIndex = 999
+    TweenService:Create(flash, TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1
+    }):Play()
+    task.delay(duration + 0.1, function() flash:Destroy() end)
+end
+
+local function shakeScreen(intensity, duration)
+    intensity = intensity or 5
+    duration = duration or 0.5
+    local cam = workspace.CurrentCamera
+    local origPos = cam.CFrame.Position
+    local start = tick()
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        if tick() - start > duration then
+            connection:Disconnect()
+            cam.CFrame = CFrame.new(origPos)
+            return
+        end
+        local offset = Vector3.new((math.random()-0.5)*intensity, (math.random()-0.5)*intensity, (math.random()-0.5)*intensity)
+        cam.CFrame = CFrame.new(origPos + offset)
+    end)
+end
+
+local function createBloodMoon()
+    local lighting = game:GetService("Lighting")
+    lighting.Ambient = Color3.fromRGB(60,10,10)
+    lighting.ColorShift_Top = Color3.fromRGB(200,40,40)
+    lighting.ColorShift_Bottom = Color3.fromRGB(80,10,10)
+    lighting.Brightness = 0.7
+    lighting.OutdoorAmbient = Color3.fromRGB(100,20,20)
+    lighting.SunTextureId = "rbxassetid://14588417062"
+    lighting.SunAngularSize = 30
+    lighting.MoonTextureId = "rbxassetid://14588417062"
+    lighting.MoonAngularSize = 30
+    local moonPart = Instance.new("Part")
+    moonPart.Name = "BloodMoonPart"
+    moonPart.Size = Vector3.new(150,150,150)
+    moonPart.Shape = Enum.PartType.Ball
+    moonPart.BrickColor = BrickColor.new("Really red")
+    moonPart.Material = Enum.Material.Neon
+    moonPart.Anchored = true
+    moonPart.CanCollide = false
+    moonPart.CFrame = CFrame.new(Vector3.new(0,900,-2000))
+    moonPart.Parent = workspace
+    local pointLight = Instance.new("PointLight")
+    pointLight.Color = Color3.fromRGB(255,50,50)
+    pointLight.Range = 3000
+    pointLight.Brightness = 3
+    pointLight.Parent = moonPart
+    local atmosphere = lighting:FindFirstChild("Atmosphere")
+    if not atmosphere then
+        atmosphere = Instance.new("Atmosphere")
+        atmosphere.Parent = lighting
+    end
+    atmosphere.Density = 0.6
+    atmosphere.Color = Color3.fromRGB(120,20,20)
+    atmosphere.Decay = 0.4
+    atmosphere.Glare = 0.3
+    local stars = Instance.new("ParticleEmitter")
+    stars.Name = "BloodStars"
+    stars.Texture = "rbxassetid://10828533857"
+    stars.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(200,50,50)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100,0,0))})
+    stars.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,2), NumberSequenceKeypoint.new(1,6)})
+    stars.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.6), NumberSequenceKeypoint.new(1,1)})
+    stars.Lifetime = NumberRange.new(5,10)
+    stars.Rate = 20
+    stars.SpreadAngle = Vector2.new(360,360)
+    stars.VelocityInheritance = 0
+    stars.Acceleration = Vector3.new(0,0.5,0)
+    stars.Enabled = true
+    local starContainer = Instance.new("Part")
+    starContainer.Name = "BloodStarContainer"
+    starContainer.Size = Vector3.new(1,1,1)
+    starContainer.Anchored = true
+    starContainer.CanCollide = false
+    starContainer.Transparency = 1
+    starContainer.CFrame = CFrame.new(0,500,0)
+    starContainer.Parent = workspace
+    stars.Parent = starContainer
+    print("🌕 ブラッドムーンエフェクト適用")
+end
+task.spawn(createBloodMoon)
+
+loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+
+local function sendChatMessage(msg)
+    local TextChatService = game:GetService("TextChatService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local generalChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if generalChannel then generalChannel:SendAsync(msg) end
+    else
+        local defaultChat = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if defaultChat then
+            local sayMessage = defaultChat:FindFirstChild("SayMessageRequest")
+            if sayMessage then sayMessage:FireServer(msg, "All") end
+        end
+    end
+end
+sendChatMessage("🍋れもにー")
+
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Options = Library.Options
+local Toggles = Library.Toggles
+Library.ForceCheckbox = false
+
+local Window = Library:CreateWindow({
+    Title = "🍋 れもにーHUB",
+    Footer = "Made by GR",
+    NotifySide = "Right",
+    ShowCustomCursor = true,
+})
+
+local Tabs = {
+    Defense = Window:AddTab("defense", "shield"),
+    Target = Window:AddTab("target", "crosshair"),
+    Grab = Window:AddTab("grab", "hand"),
+    Player = Window:AddTab("player", "user"),
+    Misc = Window:AddTab("misc", "box"),
+    Build = Window:AddTab("build", "box"),
+    LagKick = Window:AddTab("lagkick", "clock"),
+    Backpack = Window:AddTab("おんぶ", "target"),
+    PlotBreak = Window:AddTab("プロットブレイク", "box"),
+    ["UI Settings"] = Window:AddTab("UI Settings", "settings")
+}
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local PS = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local R = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = workspace
+local Player = PS.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local CE = RS:WaitForChild("CharacterEvents", 10)
+local BeingHeld = Player:WaitForChild("IsHeld", 10)
+local StruggleEvent = CE and CE:WaitForChild("Struggle")
+
+local function notify(title, content, duration)
+    Library:Notify({ Title = title or "Notification", Description = content or "", Time = duration or 5 })
+end
+
+local function sendHubLoadedMessage()
+    local message = "🍋 れもにーHUB | VaB loaded. "
+    local sent = false
+    pcall(function()
+        local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEvents then
+            local say = chatEvents:FindFirstChild("SayMessageRequest")
+            if say and typeof(say.FireServer) == "function" then
+                say:FireServer(message, "All")
+                sent = true
+            end
+        end
+    end)
+    if not sent then
+        pcall(function()
+            StarterGui:SetCore("ChatMakeSystemMessage", {
+                Text = message,
+                Color = Color3.fromRGB(255,170,0),
+                Font = Enum.Font.SourceSansBold,
+                FontSize = Enum.FontSize.Size18,
+            })
+        end)
+    end
+end
+task.spawn(function() task.wait(1) sendHubLoadedMessage() end)
+
+-- ペイント削除関連
+local paintPartsBackup = {}
+local paintConnections = {}
+local function deleteAllPaintParts()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "PaintPlayerPart" then
+            local clone = obj:Clone()
+            clone.Archivable = true
+            paintPartsBackup[obj:GetDebugId()] = { clone = clone, parent = obj.Parent }
+            obj:Destroy()
+        end
+    end
+end
+local function restorePaintParts()
+    for _, data in pairs(paintPartsBackup) do
+        if data.clone and data.parent then data.clone.Parent = data.parent end
+    end
+    paintPartsBackup = {}
+end
+local function watchNewPaintParts()
+    table.insert(paintConnections, Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("BasePart") and obj.Name == "PaintPlayerPart" then
+            task.defer(function()
+                if obj and obj.Parent then
+                    local clone = obj:Clone()
+                    clone.Archivable = true
+                    paintPartsBackup[obj:GetDebugId()] = { clone = clone, parent = obj.Parent }
+                    obj:Destroy()
+                end
+            end)
+        end
+    end))
+end
+local function disconnectWatchers()
+    for _, conn in ipairs(paintConnections) do if conn.Connected then conn:Disconnect() end end
+    paintConnections = {}
+end
+local function setTouchQuery(state)
+    local char = Workspace:FindFirstChild(Player.Name)
+    if not char then return end
+    for _, v in ipairs(char:GetChildren()) do
+        if v:IsA("Part") or v:IsA("BasePart") then v.CanTouch = state v.CanQuery = state end
+    end
+end
+
+-- Anti Gucci (Blobman)
+local antiGucciConnection
+local safePosition
+local restoreFrames = 0
+local function spawnBlobman()
+    local args = {[1] = "CreatureBlobman", [2] = CFrame.new(0,5000000,0), [3] = Vector3.new(0,60,0)}
+    pcall(function() ReplicatedStorage.MenuToys.SpawnToyRemoteFunction:InvokeServer(unpack(args)) end)
+    local folder = Workspace:WaitForChild(Player.Name.."SpawnedInToys", 5)
+    if folder and folder:FindFirstChild("CreatureBlobman") then
+        local blob = folder.CreatureBlobman
+        if blob:FindFirstChild("Head") then blob.Head.CFrame = CFrame.new(0,50000,0) blob.Head.Anchored = true end
+        notify("Success", "Blobman Spawned!", 3)
+    end
+end
+local function startAntiGucci()
+    local character = Player.Character or Player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    safePosition = rootPart.Position
+    local folder = Workspace:FindFirstChild(Player.Name.."SpawnedInToys")
+    local blob = folder and folder:FindFirstChild("CreatureBlobman")
+    local seat = blob and blob:FindFirstChild("VehicleSeat")
+    if not blob then spawnBlobman() task.wait(1) folder = Workspace:FindFirstChild(Player.Name.."SpawnedInToys") blob = folder and folder:FindFirstChild("CreatureBlobman") seat = blob and blob:FindFirstChild("VehicleSeat") end
+    if seat and seat:IsA("VehicleSeat") then rootPart.CFrame = seat.CFrame + Vector3.new(0,2,0) seat:Sit(humanoid) end
+    humanoid:GetPropertyChangedSignal("Jump"):Connect(function() if humanoid.Jump and humanoid.Sit then restoreFrames = 15 safePosition = rootPart.Position end end)
+    if antiGucciConnection then antiGucciConnection:Disconnect() end
+    antiGucciConnection = R.Heartbeat:Connect(function()
+        if not rootPart or not humanoid then return end
+        ReplicatedStorage.CharacterEvents.RagdollRemote:FireServer(rootPart, 0)
+        if restoreFrames > 0 then rootPart.CFrame = CFrame.new(safePosition) restoreFrames = restoreFrames - 1 end
+    end)
+    task.spawn(function() while humanoid.Sit do task.wait(1) end task.wait(0.5) rootPart.CFrame = CFrame.new(safePosition) end)
+end
+local function stopAntiGucci()
+    if antiGucciConnection then antiGucciConnection:Disconnect() antiGucciConnection = nil end
+    local blobFolder = Workspace:FindFirstChild(Player.Name.."SpawnedInToys")
+    if blobFolder and blobFolder:FindFirstChild("CreatureBlobman") then blobFolder.CreatureBlobman:Destroy() end
+end
+
+-- Anti Gucci (Train)
+local antiGucciConnectionTrain
+local safePositionTrain
+local restoreFramesTrain = 0
+local function startAntiGucciTrain()
+    local character = Player.Character or Player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    safePositionTrain = rootPart.Position
+    local folder = workspace.Map.AlwaysHereTweenedObjects
+    local train = folder and folder:FindFirstChild("Train")
+    local seat
+    if train then
+        for _, d in ipairs(train:GetDescendants()) do
+            if d:IsA("Seat") then seat = d break end
+        end
+    end
+    if seat then rootPart.CFrame = seat.CFrame + Vector3.new(0,2,0) seat:Sit(humanoid) end
+    humanoid:GetPropertyChangedSignal("Jump"):Connect(function() if humanoid.Jump and humanoid.Sit then restoreFramesTrain = 15 safePositionTrain = rootPart.Position end end)
+    if antiGucciConnectionTrain then antiGucciConnectionTrain:Disconnect() end
+    antiGucciConnectionTrain = R.Heartbeat:Connect(function()
+        if not rootPart or not humanoid then return end
+        ReplicatedStorage.CharacterEvents.RagdollRemote:FireServer(rootPart, 0)
+        if restoreFramesTrain > 0 then rootPart.CFrame = CFrame.new(safePositionTrain) restoreFramesTrain = restoreFramesTrain - 1 end
+    end)
+    task.spawn(function() while humanoid.Sit do task.wait(1) end task.wait(0.5) rootPart.CFrame = CFrame.new(safePositionTrain) end)
+end
+local function stopAntiGucciTrain()
+    if antiGucciConnectionTrain then antiGucciConnectionTrain:Disconnect() antiGucciConnectionTrain = nil end
+    local trainFolder = workspace.Map.AlwaysHereTweenedObjects
+    if trainFolder and trainFolder:FindFirstChild("Train") then ResetPlayer(game.Players.LocalPlayer) end
+end
+
+-- =====================================================
+-- Defense Tab
+-- =====================================================
+local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Defense Main")
+local DefenseExtra = Tabs.Defense:AddRightGroupbox("Extra Defense")
+
+local autoStruggleConn = nil
+DefenseGroup:AddToggle("AntiGrabObsidian", {
+    Text = "Anti Grab",
     Default = false,
-    Flag = "CoconutOrbit",
     Callback = function(Value)
-        _G.En = Value
-        
+        local RunService = game:GetService("RunService")
+        local localPlayer = game:GetService("Players").LocalPlayer
+        local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
         if Value then
-            task.spawn(function()
-                local Me = game.Players.LocalPlayer
-                local RunService = game:GetService("RunService")
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                
-                local SetNetworkOwner = ReplicatedStorage.GrabEvents.SetNetworkOwner
-                local SpawnToy = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
-                local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
-                
-                local Offsets = {
-                    [1] = CFrame.new(-0.45, -1.2, -0.7),
-                    [2] = CFrame.new(0.45, -1.2, -0.7),
-                    [3] = CFrame.new(0, -1, 0.8)
-                }
-                
-                local Length = 10
-                local Coconuts = {}
-                
-                while _G.En do
-                    local Char = Me.Character
-                    local Root = Char and Char:FindFirstChild("HumanoidRootPart")
-                    
-                    if not Root then 
-                      task.wait(0.1)
-                      continue 
-                    end
-                    
-                    Coconuts = {}
-                    for _, toy in pairs(workspace[Me.Name.."SpawnedInToys"]:GetChildren()) do
-                        if toy.Name == "FoodCoconut" then
-                            table.insert(Coconuts, toy)
-                        end
-                    end
-                    
-                    if #Coconuts < (Length + 2) then
+            if autoStruggleConn then autoStruggleConn:Disconnect() end
+            autoStruggleConn = RunService.Heartbeat:Connect(function()
+                local character = localPlayer.Character
+                if character and character:FindFirstChild("Head") then
+                    local head = character.Head
+                    if head:FindFirstChild("PartOwner") then
                         task.spawn(function()
-                            SpawnToy:InvokeServer("FoodCoconut", Root.CFrame * CFrame.new(-5, 0, 10), Vector3.zero)
+                            if Struggle then Struggle:FireServer(localPlayer) end
+                            pcall(function() ReplicatedStorage.GameCorrectionEvents.StopAllVelocity:FireServer() end)
+                            for _, part in pairs(character:GetChildren()) do
+                                if part:IsA("BasePart") then part.Anchored = true end
+                            end
+                            local isHeld = localPlayer:FindFirstChild("IsHeld")
+                            while isHeld and isHeld.Value do task.wait() end
+                            for _, part in pairs(character:GetChildren()) do
+                                if part:IsA("BasePart") then part.Anchored = false end
+                            end
                         end)
                     end
-                    
-                    for i, Coco in ipairs(Coconuts) do
-                        local Part = Coco:FindFirstChild("SoundPart")
-                        local HoldPart = Coco:FindFirstChild("HoldPart")
-                        local Rigid = HoldPart and HoldPart:FindFirstChild("RigidConstraint")
-                        local PartOwner = Part and Part:FindFirstChild("PartOwner")
-                        
-                        if Part and HoldPart and Rigid then
-                            if PartOwner and PartOwner.Value == Me.Name then
-                                if i <= 2 then
-                                    Part.CFrame = Root.CFrame * Offsets[i] * CFrame.new(Root.Velocity / 100)
-                                else
-                                    Part.CFrame = Root.CFrame * Offsets[3] * CFrame.new(Root.Velocity / 100) * CFrame.new(0, 0, Offsets[3].Z - (i + 0.2))
-                                end
-                                Part.Velocity = Vector3.zero
-                            end
-                            
-                            if not PartOwner or PartOwner.Value ~= Me.Name then
-                                SetNetworkOwner:FireServer(Part, Part.CFrame)
-                            end
-                            
-                            if Rigid.Attachment1 then
-                                DestroyToy:FireServer(Coco)
-                            end
-                            
-                            for _, part in pairs(Coco:GetChildren()) do
-                                if part:IsA("BasePart") then
-                                    part.CanCollide = false
-                                    part.CanQuery = false
-                                    if part.Transparency ~= 1 then
-                                        part.Transparency = 0
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    
-                    task.wait(0.01)
                 end
             end)
+        else
+            if autoStruggleConn then autoStruggleConn:Disconnect() autoStruggleConn = nil end
+            local char = localPlayer.Character
+            if char then
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then part.Anchored = false end
+                end
+            end
         end
     end
 })
--- рџ” Toggle РІ Fan в†’ Animations
-FanGroup:CreateToggle({
-	Name = "Jerk Off",
-        Flag = "Jerk Off",
-	Default = false,
-	Callback = function(on)
-        SetToggleState("Jerk Off", on)
-		playJerkOffActive = on
-		if on then
-			startJerkOff()
-		else
-			stopJerkOff()
-		end
-	end
-})
--- [Fake Headless + Korblox removed]
--- вЊЁпёЏ Dropdown РІС‹Р±РѕСЂР° РєР»Р°РІРёС€Рё
-FanGroup:CreateDropdown({
-	Name = "Toggle Key",
-        Flag = "Toggle Key",
-	Items = {
-		"Q",
-		"E",
-		"R",
-		"T"
-	},
-	Default = "Q",
-	Callback = function(v)
-		selectedKey = Enum.KeyCode[v]
-	end
-})
 
--- вЊЁпёЏ РљРµР№Р±РёРЅРґ
-UserInputService.InputBegan:Connect(function(input, gp)
-	if gp then
-		return
-	end
-	if input.KeyCode == selectedKey then
-		playJerkOffActive = not playJerkOffActive
-		if playJerkOffActive then
-			startJerkOff()
-		else
-			stopJerkOff()
-		end
-	end
-end)
+local antiBlob1T=false
+local function antiBlob1F()
+    antiBlob1T=true
+    workspace.DescendantAdded:Connect(function(toy)
+        if toy.Name=="CreatureBlobman" and antiBlob1T then
+            toy.LeftDetector:Destroy()
+            toy.RightDetector:Destroy()
+        end
+    end)
 end
+DefenseGroup:AddToggle("AntiBlobmanToggle", {Text="Anti Blobman", Default=false, Callback=
